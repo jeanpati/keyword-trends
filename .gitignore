@@ -41,3 +41,5 @@ dbt/
 
 # duckdb
 duck_dev.db
+
+data/
