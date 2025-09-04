@@ -43,3 +43,4 @@ dbt/
 duck_dev.db
 
 data/
+logs/
