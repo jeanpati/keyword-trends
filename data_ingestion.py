@@ -20,7 +20,7 @@ data_dir = "./data"
 raw_data_path = os.path.join(data_dir, "raw")
 
 
-def main():
+def convert_minio_csv_to_parquet():
     start = time.perf_counter()
     http_client = urllib3.PoolManager(
         cert_reqs="CERT_NONE",
@@ -70,10 +70,14 @@ def main():
 
     time_elapsed = round(time.perf_counter() - start, 2)
     logger.info(
-        "Completed upload to Cloud Storage, time_elapsed: %.2f seconds, %.2f minutes",
+        "Converted CSV files in Minio to Parquet, time_elapsed: %.2f seconds, %.2f minutes",
         time_elapsed,
         time_elapsed / 60,
     )
+
+
+def main():
+    convert_minio_csv_to_parquet()
 
 
 if __name__ == "__main__":
