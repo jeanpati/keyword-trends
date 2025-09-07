@@ -7,20 +7,24 @@ import time
 import pandas as pd
 from io import BytesIO
 import urllib3
+import googleapiclient.discovery
+import googleapiclient.errors
 
 
-logger = setup_logger(__name__, "./logs/data_acquisition.log")
+logger = setup_logger(__name__, "./logs/data_ingestion.log")
 load_dotenv()
 
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 MINIO_URL = os.getenv("MINIO_URL")
 MINIO_BUCKET = os.getenv("MINIO_BUCKET")
-data_dir = "./data"
-raw_data_path = os.path.join(data_dir, "raw")
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 
 def convert_minio_csv_to_parquet():
+    """
+    Converts the CSV files found in Minio to Parquet format.
+    """
     start = time.perf_counter()
     http_client = urllib3.PoolManager(
         cert_reqs="CERT_NONE",
@@ -76,8 +80,29 @@ def convert_minio_csv_to_parquet():
     )
 
 
+def save_search_data():
+    """
+    Retrieves keywords and saves search results for each keyword.
+    """
+
+    api_service_name = "youtube"
+    api_version = "v3"
+
+    youtube = googleapiclient.discovery.build(
+        api_service_name, api_version, developerKey=YOUTUBE_API_KEY
+    )
+
+    request = youtube.search().list(
+        part="snippet", q="vitamin c serum", regionCode="US", maxResults=20
+    )
+    response = request.execute()
+
+    print(response)
+
+
 def main():
     convert_minio_csv_to_parquet()
+    save_search_data()
 
 
 if __name__ == "__main__":
