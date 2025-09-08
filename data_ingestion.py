@@ -102,7 +102,6 @@ def save_search_data():
 
 def main():
     convert_minio_csv_to_parquet()
-    save_search_data()
 
 
 if __name__ == "__main__":
