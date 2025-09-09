@@ -133,6 +133,7 @@ def get_keywords():
 
     except Exception as e:
         logger.error("Error retrieving keywords: %s", e)
+        raise
 
 
 def search_youtube_videos(keyword):
@@ -177,6 +178,7 @@ def search_youtube_videos(keyword):
 
     except Exception as e:
         logger.error("Error searching for keyword '%s': %s", keyword, e)
+        raise
 
 
 def save_search_results(search_results_data):
@@ -204,7 +206,8 @@ def save_search_results(search_results_data):
                 ).fetchall()
                 existing_video_ids = {row[0] for row in existing_video_ids}
             except Exception as e:
-                logger.warning("Could not check existing video_ids: %s", e)
+                logger.warning("Error checking existing video_ids: %s", e)
+                raise
 
         new_results = search_results_dataframe[
             ~search_results_dataframe["video_id"].isin(existing_video_ids)
@@ -230,6 +233,7 @@ def save_search_results(search_results_data):
 
     except Exception as e:
         logger.error("Error saving search results: %s", e)
+        raise
 
 
 def main():
