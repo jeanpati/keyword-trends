@@ -234,7 +234,7 @@ def main():
         return
 
     all_search_results = []
-    for keyword in keywords:
+    for keyword in keywords[:3]:
         logger.info("Processing keyword: %s", keyword)
         search_results = search_youtube_videos(keyword)
         all_search_results.extend(search_results)
