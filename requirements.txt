@@ -7,3 +7,5 @@ fastparquet
 dbt-core
 dbt-duckdb
 google-api-python-client
+sqlalchemy
+p
