@@ -9,7 +9,7 @@ from io import BytesIO
 import urllib3
 import googleapiclient.discovery
 import googleapiclient.errors
-from sqlalchemy import create_engine, text, Column, String, Text, DateTime
+from sqlalchemy import create_engine, text, Column, String, Text, DateTime, Integer
 from datetime import datetime, timezone
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -31,6 +31,7 @@ Base = declarative_base()
 class SearchResult(Base):
     __tablename__ = "search_results"
 
+    id = Column(Integer, primary_key=True, autoincrement=True)
     video_id = Column(String)
     search_keyword = Column(String)
     title = Column(String)
