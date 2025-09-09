@@ -10,6 +10,7 @@ import urllib3
 import googleapiclient.discovery
 import googleapiclient.errors
 from sqlalchemy import create_engine, text
+from datetime import datetime, timezone
 
 
 logger = setup_logger(__name__, "./logs/data_ingestion.log")
@@ -87,24 +88,49 @@ def convert_minio_csv_to_parquet():
     )
 
 
-def save_search_data():
+def search_youtube_videos(keyword):
     """
     Retrieves keywords and saves search results for each keyword.
     """
-
     api_service_name = "youtube"
     api_version = "v3"
+    max_results = 20
 
     youtube = googleapiclient.discovery.build(
         api_service_name, api_version, developerKey=YOUTUBE_API_KEY
     )
+    try:
+        request = youtube.search().list(
+            part="snippet",
+            q=keyword,
+            regionCode="US",
+            maxResults=max_results,
+            type="video",
+            order="relevance",
+        )
 
-    request = youtube.search().list(
-        part="snippet", q="vitamin c serum", regionCode="US", maxResults=20
-    )
-    response = request.execute()
+        response = request.execute()
 
-    print(response)
+        search_results = []
+        for item in response.get("items", []):
+            video_data = {
+                "search_keyword": keyword,
+                "video_id": item["id"]["videoId"],
+                "title": item["snippet"]["title"],
+                "description": item["snippet"]["description"],
+                "channel_id": item["snippet"]["channelId"],
+                "channel_title": item["snippet"]["channelTitle"],
+                "published_at": item["snippet"]["publishTime"],
+                "searched_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            search_results.append(video_data)
+
+        logger.info("Found %s videos for keyword: %s", len(search_results), keyword)
+        return search_results
+
+    except Exception as e:
+        logger.error("Error searching for keyword '%s': %s", keyword, e)
+        return []
 
 
 def get_sqlalchemy_engine():
@@ -154,7 +180,16 @@ def get_keywords():
 def main():
     convert_minio_csv_to_parquet()
     keywords = get_keywords()
-    print(keywords)
+    if not keywords:
+        logger.error("No keywords found, exiting")
+        return
+
+    all_search_results = []
+    for i, keyword in keywords:
+        logger.info("Processing keyword %s/%s: %s", i + 1, len(keywords), keyword)
+        search_results = search_youtube_videos(keyword)
+        all_search_results.extend(search_results)
+        time.sleep(1)
 
 
 if __name__ == "__main__":
