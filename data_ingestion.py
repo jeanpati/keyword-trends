@@ -52,7 +52,11 @@ def convert_minio_csv_to_parquet():
         response = minio_client.get_object(MINIO_BUCKET, file.object_name)
         logger.info("Processing file from MinIO: %s", file.object_name)
 
-        csv_dataframe = pd.read_csv(response)
+        if file.object_name == "csv/census.csv":
+            csv_dataframe = pd.read_csv(response, skiprows=1)
+        else:
+            csv_dataframe = pd.read_csv(response)
+
         parquet_buffer = BytesIO()
         csv_dataframe.to_parquet(parquet_buffer, index=False)
 

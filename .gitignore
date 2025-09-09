@@ -47,3 +47,6 @@ data/
 
 #logs
 logs/
+
+#startup script (dead code)
+project_startup.py
