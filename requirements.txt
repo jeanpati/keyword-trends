@@ -5,4 +5,5 @@ requests
 pandas
 fastparquet
 dbt-core
+dbt-duckdb
 google-api-python-client

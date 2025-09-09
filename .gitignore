@@ -41,6 +41,9 @@ dbt/
 
 # duckdb
 duck_dev.db
-
+*.duckdb
+*.duckdb.wal
 data/
+
+#logs
 logs/
