@@ -25,22 +25,21 @@ CATALOG_PATH = os.getenv("CATALOG_PATH")
 MINIO_FILE_PATH = os.getenv("MINIO_FILE_PATH")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-Base = declarative_base()
+# Base = declarative_base()
 
 
-class SearchResult(Base):
-    __tablename__ = "search_results"
+# class SearchResult(Base):
+#     __tablename__ = "search_results"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    video_id = Column(String)
-    search_keyword = Column(String)
-    title = Column(String)
-    description = Column(Text)
-    channel_id = Column(String)
-    channel_title = Column(String)
-    publish_time = Column(DateTime)
-    thumbnail_url = Column(String)
-    searched_at = Column(DateTime)
+#     video_id = Column(String, primary_key=True)
+#     search_keyword = Column(String)
+#     title = Column(String)
+#     description = Column(Text)
+#     channel_id = Column(String)
+#     channel_title = Column(String)
+#     publish_time = Column(DateTime)
+#     thumbnail_url = Column(String)
+#     searched_at = Column(DateTime)
 
 
 def convert_minio_csv_to_parquet():
@@ -148,7 +147,6 @@ def search_youtube_videos(keyword):
 
     except Exception as e:
         logger.error("Error searching for keyword '%s': %s", keyword, e)
-        return []
 
 
 def get_sqlalchemy_engine():
@@ -198,7 +196,6 @@ def get_keywords():
 
     except Exception as e:
         logger.error("Error retrieving keywords: %s", e)
-        return []
 
 
 def save_search_results(search_results_data):
@@ -212,16 +209,43 @@ def save_search_results(search_results_data):
     engine = get_sqlalchemy_engine()
 
     try:
-        Base.metadata.create_all(engine, tables=[SearchResult.__table__])
-
         search_results_dataframe = pd.DataFrame(search_results_data)
-        search_results_dataframe.to_sql(
-            "search_results", engine, if_exists="append", index=False, method="multi"
+        search_results_dataframe = search_results_dataframe.drop_duplicates(
+            subset=["video_id"], keep="first"
         )
 
-        logger.info(
-            "Saved %s search results to database", len(search_results_dataframe)
-        )
+        with engine.connect() as conn:
+            try:
+                existing_video_ids = conn.execute(
+                    text(
+                        "SELECT DISTINCT video_id FROM search_results WHERE video_id IS NOT NULL"
+                    )
+                ).fetchall()
+                existing_video_ids = {row[0] for row in existing_video_ids}
+            except Exception as e:
+                logger.warning("Could not check existing video_ids: %s", e)
+
+        new_results = search_results_dataframe[
+            ~search_results_dataframe["video_id"].isin(existing_video_ids)
+        ]
+
+        if len(new_results) > 0:
+            new_results.to_sql(
+                "search_results",
+                engine,
+                if_exists="append",
+                index=False,
+                method="multi",
+            )
+            logger.info("Saved %s new search results to database", len(new_results))
+        else:
+            logger.info("No new search results to save")
+
+        if len(new_results) < len(search_results_dataframe):
+            logger.info(
+                "Skipped %s duplicate video_ids",
+                len(search_results_dataframe) - len(new_results),
+            )
 
     except Exception as e:
         logger.error("Error saving search results: %s", e)
@@ -235,7 +259,7 @@ def main():
         return
 
     all_search_results = []
-    for keyword in keywords[:3]:
+    for keyword in keywords[:1]:
         logger.info("Processing keyword: %s", keyword)
         search_results = search_youtube_videos(keyword)
         all_search_results.extend(search_results)
