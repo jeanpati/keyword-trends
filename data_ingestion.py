@@ -31,7 +31,7 @@ Base = declarative_base()
 class SearchResult(Base):
     __tablename__ = "search_results"
 
-    video_id = Column(String, primary_key=True)
+    video_id = Column(String)
     search_keyword = Column(String)
     title = Column(String)
     description = Column(Text)
@@ -164,11 +164,15 @@ def get_sqlalchemy_engine():
         conn.execute(text(f"SET s3_access_key_id='{MINIO_ACCESS_KEY}'"))
         conn.execute(text(f"SET s3_secret_access_key='{MINIO_SECRET_KEY}'"))
         conn.execute(text("SET s3_url_style='path'"))
-        conn.execute(
-            text(
-                f"ATTACH 'ducklake:{CATALOG_PATH}' AS trends_lake (DATA_PATH '{MINIO_FILE_PATH}')"
+
+        result = conn.execute(text("SHOW DATABASES")).fetchall()
+        attached_databases = [row[0] for row in result]
+        if "trends_lake" not in attached_databases:
+            conn.execute(
+                text(
+                    f"ATTACH 'ducklake:{CATALOG_PATH}' AS trends_lake (DATA_PATH '{MINIO_FILE_PATH}')"
+                )
             )
-        )
         conn.execute(text("USE trends_lake"))
         conn.commit()
 
@@ -176,7 +180,9 @@ def get_sqlalchemy_engine():
 
 
 def get_keywords():
-    """Retrieve all keywords from the keywords table"""
+    """
+    Retrieve all keywords from the keywords table
+    """
     engine = get_sqlalchemy_engine()
 
     try:
@@ -194,6 +200,32 @@ def get_keywords():
         return []
 
 
+def save_search_results(search_results_data):
+    """
+    Save search results to DuckLake
+    """
+    if not search_results_data:
+        logger.warning("No search results to save")
+        return
+
+    engine = get_sqlalchemy_engine()
+
+    try:
+        Base.metadata.create_all(engine, tables=[SearchResult.__table__])
+
+        search_results_dataframe = pd.DataFrame(search_results_data)
+        search_results_dataframe.to_sql(
+            "search_results", engine, if_exists="append", index=False, method="multi"
+        )
+
+        logger.info(
+            "Saved %s search results to database", len(search_results_dataframe)
+        )
+
+    except Exception as e:
+        logger.error("Error saving search results: %s", e)
+
+
 def main():
     convert_minio_csv_to_parquet()
     keywords = get_keywords()
@@ -202,11 +234,13 @@ def main():
         return
 
     all_search_results = []
-    for i, keyword in keywords:
-        logger.info("Processing keyword %s/%s: %s", i + 1, len(keywords), keyword)
+    for keyword in keywords:
+        logger.info("Processing keyword: %s", keyword)
         search_results = search_youtube_videos(keyword)
         all_search_results.extend(search_results)
         time.sleep(1)
+
+    save_search_results(all_search_results)
 
 
 if __name__ == "__main__":
