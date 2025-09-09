@@ -86,50 +86,6 @@ def convert_minio_csv_to_parquet():
     )
 
 
-def search_youtube_videos(keyword):
-    """
-    Retrieves keywords and saves search results for each keyword.
-    """
-    api_service_name = "youtube"
-    api_version = "v3"
-    max_results = 20
-
-    youtube = googleapiclient.discovery.build(
-        api_service_name, api_version, developerKey=YOUTUBE_API_KEY
-    )
-    try:
-        request = youtube.search().list(
-            part="snippet",
-            q=keyword,
-            regionCode="US",
-            maxResults=max_results,
-            type="video",
-            order="relevance",
-        )
-
-        response = request.execute()
-
-        search_results = []
-        for item in response.get("items", []):
-            video_data = {
-                "video_id": item["id"]["videoId"],
-                "search_keyword": keyword,
-                "title": item["snippet"]["title"],
-                "description": item["snippet"]["description"],
-                "channel_id": item["snippet"]["channelId"],
-                "channel_title": item["snippet"]["channelTitle"],
-                "publish_time": item["snippet"]["publishTime"],
-                "searched_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-            }
-            search_results.append(video_data)
-
-        logger.info("Found %s videos for keyword: %s", len(search_results), keyword)
-        return search_results
-
-    except Exception as e:
-        logger.error("Error searching for keyword '%s': %s", keyword, e)
-
-
 def get_sqlalchemy_engine():
     """
     Create SQLAlchemy engine for DuckDB with DuckLake
@@ -177,6 +133,50 @@ def get_keywords():
 
     except Exception as e:
         logger.error("Error retrieving keywords: %s", e)
+
+
+def search_youtube_videos(keyword):
+    """
+    Retrieves keywords and saves search results for each keyword.
+    """
+    api_service_name = "youtube"
+    api_version = "v3"
+    max_results = 20
+
+    youtube = googleapiclient.discovery.build(
+        api_service_name, api_version, developerKey=YOUTUBE_API_KEY
+    )
+    try:
+        request = youtube.search().list(
+            part="snippet",
+            q=keyword,
+            regionCode="US",
+            maxResults=max_results,
+            type="video",
+            order="relevance",
+        )
+
+        response = request.execute()
+
+        search_results = []
+        for item in response.get("items", []):
+            video_data = {
+                "video_id": item["id"]["videoId"],
+                "search_keyword": keyword,
+                "title": item["snippet"]["title"],
+                "description": item["snippet"]["description"],
+                "channel_id": item["snippet"]["channelId"],
+                "channel_title": item["snippet"]["channelTitle"],
+                "publish_time": item["snippet"]["publishTime"],
+                "searched_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            search_results.append(video_data)
+
+        logger.info("Found %s videos for keyword: %s", len(search_results), keyword)
+        return search_results
+
+    except Exception as e:
+        logger.error("Error searching for keyword '%s': %s", keyword, e)
 
 
 def save_search_results(search_results_data):
