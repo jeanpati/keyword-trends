@@ -9,8 +9,9 @@ from io import BytesIO
 import urllib3
 import googleapiclient.discovery
 import googleapiclient.errors
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, Column, String, Text, DateTime
 from datetime import datetime, timezone
+from sqlalchemy.ext.declarative import declarative_base
 
 
 logger = setup_logger(__name__, "./logs/data_ingestion.log")
@@ -23,6 +24,22 @@ MINIO_BUCKET = os.getenv("MINIO_BUCKET")
 CATALOG_PATH = os.getenv("CATALOG_PATH")
 MINIO_FILE_PATH = os.getenv("MINIO_FILE_PATH")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+
+Base = declarative_base()
+
+
+class SearchResult(Base):
+    __tablename__ = "search_results"
+
+    video_id = Column(String, primary_key=True)
+    search_keyword = Column(String)
+    title = Column(String)
+    description = Column(Text)
+    channel_id = Column(String)
+    channel_title = Column(String)
+    publish_time = Column(DateTime)
+    thumbnail_url = Column(String)
+    searched_at = Column(DateTime)
 
 
 def convert_minio_csv_to_parquet():
@@ -114,13 +131,13 @@ def search_youtube_videos(keyword):
         search_results = []
         for item in response.get("items", []):
             video_data = {
-                "search_keyword": keyword,
                 "video_id": item["id"]["videoId"],
+                "search_keyword": keyword,
                 "title": item["snippet"]["title"],
                 "description": item["snippet"]["description"],
                 "channel_id": item["snippet"]["channelId"],
                 "channel_title": item["snippet"]["channelTitle"],
-                "published_at": item["snippet"]["publishTime"],
+                "publish_time": item["snippet"]["publishTime"],
                 "searched_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
             }
             search_results.append(video_data)
