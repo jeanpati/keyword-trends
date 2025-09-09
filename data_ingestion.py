@@ -1,5 +1,4 @@
 import os
-import requests
 from dotenv import load_dotenv
 from minio import Minio
 from utils.logger import setup_logger
@@ -8,10 +7,8 @@ import pandas as pd
 from io import BytesIO
 import urllib3
 import googleapiclient.discovery
-import googleapiclient.errors
-from sqlalchemy import create_engine, text, Column, String, Text, DateTime, Integer
+from sqlalchemy import create_engine, text
 from datetime import datetime, timezone
-from sqlalchemy.ext.declarative import declarative_base
 
 
 logger = setup_logger(__name__, "./logs/data_ingestion.log")
@@ -24,22 +21,6 @@ MINIO_BUCKET = os.getenv("MINIO_BUCKET")
 CATALOG_PATH = os.getenv("CATALOG_PATH")
 MINIO_FILE_PATH = os.getenv("MINIO_FILE_PATH")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-
-# Base = declarative_base()
-
-
-# class SearchResult(Base):
-#     __tablename__ = "search_results"
-
-#     video_id = Column(String, primary_key=True)
-#     search_keyword = Column(String)
-#     title = Column(String)
-#     description = Column(Text)
-#     channel_id = Column(String)
-#     channel_title = Column(String)
-#     publish_time = Column(DateTime)
-#     thumbnail_url = Column(String)
-#     searched_at = Column(DateTime)
 
 
 def convert_minio_csv_to_parquet():
