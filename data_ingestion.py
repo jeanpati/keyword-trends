@@ -116,14 +116,14 @@ def get_sqlalchemy_engine():
 
     with engine.connect() as conn:
         conn.execute(text("LOAD 'ducklake'"))
-        conn.execute(text("SET s3_endpoint={MINIO_URL}"))
+        conn.execute(text(f"SET s3_endpoint='{MINIO_URL}'"))
         conn.execute(text("SET s3_use_ssl=false"))
-        conn.execute(text("SET s3_access_key_id={MINIO_ACCESS_KEY}"))
-        conn.execute(text("SET s3_secret_access_key={MINIO_SECRET_KEY}"))
+        conn.execute(text(f"SET s3_access_key_id='{MINIO_ACCESS_KEY}'"))
+        conn.execute(text(f"SET s3_secret_access_key='{MINIO_SECRET_KEY}'"))
         conn.execute(text("SET s3_url_style='path'"))
         conn.execute(
             text(
-                "ATTACH 'ducklake:{CATALOG_PATH}' AS trends_lake (DATA_PATH '{MINIO_FILE_PATH}')"
+                f"ATTACH 'ducklake:{CATALOG_PATH}' AS trends_lake (DATA_PATH '{MINIO_FILE_PATH}')"
             )
         )
         conn.execute(text("USE trends_lake"))
@@ -132,8 +132,29 @@ def get_sqlalchemy_engine():
     return engine
 
 
+def get_keywords():
+    """Retrieve all keywords from the keywords table"""
+    engine = get_sqlalchemy_engine()
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT DISTINCT keyword FROM keywords WHERE keyword IS NOT NULL")
+            )
+            keywords = [row[0] for row in result]
+
+        logger.info("Retrieved %s keywords from database", len(keywords))
+        return keywords
+
+    except Exception as e:
+        logger.error("Error retrieving keywords: %s", e)
+        return []
+
+
 def main():
     convert_minio_csv_to_parquet()
+    keywords = get_keywords()
+    print(keywords)
 
 
 if __name__ == "__main__":
