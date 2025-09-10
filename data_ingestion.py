@@ -371,6 +371,8 @@ def main():
         video_stats = get_video_statistics(video_ids)
         save_video_statistics(video_stats)
 
+    logger.info("Data ingestion completed.")
+
 
 if __name__ == "__main__":
     main()
