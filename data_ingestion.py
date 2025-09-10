@@ -133,6 +133,7 @@ def get_keywords():
 
     except Exception as e:
         logger.error("Error retrieving keywords: %s", e)
+        raise
 
 
 def search_youtube_videos(keyword):
@@ -161,13 +162,13 @@ def search_youtube_videos(keyword):
         search_results = []
         for item in response.get("items", []):
             video_data = {
-                "video_id": item["id"]["videoId"],
+                "video_id": item.get("id", {}).get("videoId", None),
                 "search_keyword": keyword,
-                "title": item["snippet"]["title"],
-                "description": item["snippet"]["description"],
-                "channel_id": item["snippet"]["channelId"],
-                "channel_title": item["snippet"]["channelTitle"],
-                "publish_time": item["snippet"]["publishTime"],
+                "title": item.get("snippet", {}).get("title", None),
+                "description": item.get("snippet", {}).get("description", None),
+                "channel_id": item.get("snippet", {}).get("channelId", None),
+                "channel_title": item.get("snippet", {}).get("channelTitle", None),
+                "publish_time": item.get("snippet", {}).get("publishTime", None),
                 "searched_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
             }
             search_results.append(video_data)
@@ -177,6 +178,7 @@ def search_youtube_videos(keyword):
 
     except Exception as e:
         logger.error("Error searching for keyword '%s': %s", keyword, e)
+        raise
 
 
 def save_search_results(search_results_data):
@@ -204,7 +206,8 @@ def save_search_results(search_results_data):
                 ).fetchall()
                 existing_video_ids = {row[0] for row in existing_video_ids}
             except Exception as e:
-                logger.warning("Could not check existing video_ids: %s", e)
+                logger.warning("Error checking existing video_ids: %s", e)
+                raise
 
         new_results = search_results_dataframe[
             ~search_results_dataframe["video_id"].isin(existing_video_ids)
@@ -230,6 +233,119 @@ def save_search_results(search_results_data):
 
     except Exception as e:
         logger.error("Error saving search results: %s", e)
+        raise
+
+
+def get_video_statistics(video_ids):
+    """
+    Get detailed statistics for each video - likes, views, and comments
+    """
+    if not video_ids:
+        return []
+
+    api_service_name = "youtube"
+    api_version = "v3"
+
+    youtube = googleapiclient.discovery.build(
+        api_service_name, api_version, developerKey=YOUTUBE_API_KEY
+    )
+
+    try:
+        # YouTube API allows up to 50 video IDs per request
+        video_stats = []
+
+        # Process in batches of 50
+        for i in range(0, len(video_ids), 50):
+            batch_ids = video_ids[i : i + 50]
+
+            request = youtube.videos().list(
+                part="statistics,contentDetails", id=",".join(batch_ids)
+            )
+            response = request.execute()
+
+            for item in response.get("items", []):
+                video_stats.append(
+                    {
+                        "video_id": item.get("id", None),
+                        "view_count": int(
+                            item.get("statistics", {}).get("viewCount", 0)
+                        ),
+                        "like_count": int(
+                            item.get("statistics", {}).get("likeCount", 0)
+                        ),
+                        "comment_count": int(
+                            item.get("statistics", {}).get("commentCount", 0)
+                        ),
+                        "duration": item.get("contentDetails", {}).get(
+                            "duration", None
+                        ),
+                        "retrieved_at": datetime.now(timezone.utc).strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        ),
+                    }
+                )
+
+        logger.info("Retrieved statistics for %s videos", len(video_stats))
+        return video_stats
+
+    except Exception as e:
+        logger.error("Error getting video statistics: %s", e)
+        raise
+
+
+def save_video_statistics(video_stats_data):
+    """
+    Save video statistics to DuckLake
+    """
+    if not video_stats_data:
+        logger.warning("No video statistics to save")
+        return
+
+    engine = get_sqlalchemy_engine()
+
+    try:
+        video_stats_dataframe = pd.DataFrame(video_stats_data)
+        video_stats_dataframe = video_stats_dataframe.drop_duplicates(
+            subset=["video_id"], keep="first"
+        )
+
+        with engine.connect() as conn:
+            try:
+                existing_video_ids = conn.execute(
+                    text(
+                        "SELECT DISTINCT video_id FROM video_statistics WHERE video_id IS NOT NULL"
+                    )
+                ).fetchall()
+                existing_video_ids = {row[0] for row in existing_video_ids}
+            except Exception as e:
+                logger.warning("Error checking existing video_ids: %s", e)
+                raise
+
+        new_stats = video_stats_dataframe[
+            ~video_stats_dataframe["video_id"].isin(existing_video_ids)
+        ]
+
+        if len(new_stats) > 0:
+            new_stats.to_sql(
+                "video_statistics",
+                engine,
+                if_exists="append",
+                index=False,
+                method="multi",
+            )
+            logger.info("Saved %s new video statistics to database", len(new_stats))
+        else:
+            logger.info("No new video statistics to save")
+
+        if len(new_stats) < len(video_stats_dataframe):
+            logger.info(
+                "Skipped %s duplicate video_ids",
+                len(video_stats_dataframe) - len(new_stats),
+            )
+
+    except Exception as e:
+        logger.error("Error saving video statistics: %s", e)
+        raise
 
 
 def main():
@@ -247,6 +363,15 @@ def main():
         time.sleep(1)
 
     save_search_results(all_search_results)
+
+    video_ids = [result["video_id"] for result in all_search_results]
+
+    if video_ids:
+        logger.info("Getting statistics for %s videos", len(video_ids))
+        video_stats = get_video_statistics(video_ids)
+        save_video_statistics(video_stats)
+
+    logger.info("Data ingestion completed.")
 
 
 if __name__ == "__main__":
