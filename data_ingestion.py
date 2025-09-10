@@ -279,7 +279,9 @@ def get_video_statistics(video_ids):
                         "duration": item.get("contentDetails", {}).get(
                             "duration", None
                         ),
-                        "stats_retrieved_at": datetime.now().isoformat(),
+                        "retrieved_at": datetime.now(timezone.utc).strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        ),
                     }
                 )
 
@@ -288,6 +290,61 @@ def get_video_statistics(video_ids):
 
     except Exception as e:
         logger.error("Error getting video statistics: %s", e)
+        raise
+
+
+def save_video_statistics(video_stats_data):
+    """
+    Save video statistics to DuckLake
+    """
+    if not video_stats_data:
+        logger.warning("No video statistics to save")
+        return
+
+    engine = get_sqlalchemy_engine()
+
+    try:
+        video_stats_dataframe = pd.DataFrame(video_stats_data)
+        video_stats_dataframe = video_stats_dataframe.drop_duplicates(
+            subset=["video_id"], keep="first"
+        )
+
+        with engine.connect() as conn:
+            try:
+                existing_video_ids = conn.execute(
+                    text(
+                        "SELECT DISTINCT video_id FROM video_statistics WHERE video_id IS NOT NULL"
+                    )
+                ).fetchall()
+                existing_video_ids = {row[0] for row in existing_video_ids}
+            except Exception as e:
+                logger.warning("Error checking existing video_ids: %s", e)
+                raise
+
+        new_stats = video_stats_dataframe[
+            ~video_stats_dataframe["video_id"].isin(existing_video_ids)
+        ]
+
+        if len(new_stats) > 0:
+            new_stats.to_sql(
+                "video_statistics",
+                engine,
+                if_exists="append",
+                index=False,
+                method="multi",
+            )
+            logger.info("Saved %s new video statistics to database", len(new_stats))
+        else:
+            logger.info("No new video statistics to save")
+
+        if len(new_stats) < len(video_stats_dataframe):
+            logger.info(
+                "Skipped %s duplicate video_ids",
+                len(video_stats_dataframe) - len(new_stats),
+            )
+
+    except Exception as e:
+        logger.error("Error saving video statistics: %s", e)
         raise
 
 
@@ -312,7 +369,7 @@ def main():
     if video_ids:
         logger.info("Getting statistics for %s videos", len(video_ids))
         video_stats = get_video_statistics(video_ids)
-        print(video_stats)
+        save_video_statistics(video_stats)
 
 
 if __name__ == "__main__":
