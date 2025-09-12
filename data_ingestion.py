@@ -19,15 +19,11 @@ MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 MINIO_URL = os.getenv("MINIO_URL")
 MINIO_BUCKET = os.getenv("MINIO_BUCKET")
 CATALOG_PATH = os.getenv("CATALOG_PATH")
-MINIO_FILE_PATH = os.getenv("MINIO_FILE_PATH")
+MINIO_PARQUET_PATH = os.getenv("MINIO_PARQUET_PATH")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 
-def convert_minio_csv_to_parquet():
-    """
-    Converts the CSV files found in Minio to Parquet format.
-    """
-    start = time.perf_counter()
+def connect_to_minio():
     http_client = urllib3.PoolManager(
         cert_reqs="CERT_NONE",
     )
@@ -43,6 +39,15 @@ def convert_minio_csv_to_parquet():
         logger.info("Created bucket: %s", MINIO_BUCKET)
     else:
         logger.info("Bucket %s already exists", MINIO_BUCKET)
+    return minio_client
+
+
+def convert_minio_csv_to_parquet():
+    """
+    Converts the CSV files found in Minio to Parquet format.
+    """
+    start = time.perf_counter()
+    minio_client = connect_to_minio()
 
     raw_folder = "csv/"
     converted_folder = "parquet/"
@@ -55,12 +60,12 @@ def convert_minio_csv_to_parquet():
         logger.info("Processing file from MinIO: %s", file.object_name)
 
         if file.object_name == "csv/census.csv":
-            csv_dataframe = pd.read_csv(response, skiprows=1)
+            csv = pd.read_csv(response, skiprows=1)
         else:
-            csv_dataframe = pd.read_csv(response)
+            csv = pd.read_csv(response)
 
         parquet_buffer = BytesIO()
-        csv_dataframe.to_parquet(parquet_buffer, index=False)
+        csv.to_parquet(parquet_buffer, index=False)
 
         file_name = file.object_name.replace(raw_folder, converted_folder).replace(
             ".csv", ".parquet"
@@ -106,7 +111,7 @@ def get_sqlalchemy_engine():
         if "trends_lake" not in attached_databases:
             conn.execute(
                 text(
-                    f"ATTACH 'ducklake:{CATALOG_PATH}' AS trends_lake (DATA_PATH '{MINIO_FILE_PATH}')"
+                    f"ATTACH 'ducklake:{CATALOG_PATH}' AS trends_lake (DATA_PATH '{MINIO_PARQUET_PATH}')"
                 )
             )
         conn.execute(text("USE trends_lake"))
@@ -192,8 +197,8 @@ def save_search_results(search_results_data):
     engine = get_sqlalchemy_engine()
 
     try:
-        search_results_dataframe = pd.DataFrame(search_results_data)
-        search_results_dataframe = search_results_dataframe.drop_duplicates(
+        search_results = pd.DataFrame(search_results_data)
+        search_results = search_results.drop_duplicates(
             subset=["video_id"], keep="first"
         )
 
@@ -209,8 +214,8 @@ def save_search_results(search_results_data):
                 logger.warning("Error checking existing video_ids: %s", e)
                 raise
 
-        new_results = search_results_dataframe[
-            ~search_results_dataframe["video_id"].isin(existing_video_ids)
+        new_results = search_results[
+            ~search_results["video_id"].isin(existing_video_ids)
         ]
 
         if len(new_results) > 0:
@@ -225,10 +230,10 @@ def save_search_results(search_results_data):
         else:
             logger.info("No new search results to save")
 
-        if len(new_results) < len(search_results_dataframe):
+        if len(new_results) < len(search_results):
             logger.info(
                 "Skipped %s duplicate video_ids",
-                len(search_results_dataframe) - len(new_results),
+                len(search_results) - len(new_results),
             )
 
     except Exception as e:
@@ -251,9 +256,8 @@ def get_video_statistics(video_ids):
     )
 
     try:
-        # YouTube API allows up to 50 video IDs per request
         video_stats = []
-
+        # YouTube API allows up to 50 video IDs per request
         # Process in batches of 50
         for i in range(0, len(video_ids), 50):
             batch_ids = video_ids[i : i + 50]
@@ -304,10 +308,8 @@ def save_video_statistics(video_stats_data):
     engine = get_sqlalchemy_engine()
 
     try:
-        video_stats_dataframe = pd.DataFrame(video_stats_data)
-        video_stats_dataframe = video_stats_dataframe.drop_duplicates(
-            subset=["video_id"], keep="first"
-        )
+        video_stats = pd.DataFrame(video_stats_data)
+        video_stats = video_stats.drop_duplicates(subset=["video_id"], keep="first")
 
         with engine.connect() as conn:
             try:
@@ -321,9 +323,7 @@ def save_video_statistics(video_stats_data):
                 logger.warning("Error checking existing video_ids: %s", e)
                 raise
 
-        new_stats = video_stats_dataframe[
-            ~video_stats_dataframe["video_id"].isin(existing_video_ids)
-        ]
+        new_stats = video_stats[~video_stats["video_id"].isin(existing_video_ids)]
 
         if len(new_stats) > 0:
             new_stats.to_sql(
@@ -337,10 +337,10 @@ def save_video_statistics(video_stats_data):
         else:
             logger.info("No new video statistics to save")
 
-        if len(new_stats) < len(video_stats_dataframe):
+        if len(new_stats) < len(video_stats):
             logger.info(
                 "Skipped %s duplicate video_ids",
-                len(video_stats_dataframe) - len(new_stats),
+                len(video_stats) - len(new_stats),
             )
 
     except Exception as e:
