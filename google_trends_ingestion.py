@@ -5,6 +5,7 @@ import pandas as pd
 from utils.logger import setup_logger
 from dotenv import load_dotenv
 from data_ingestion import get_sqlalchemy_engine, connect_to_minio
+from sqlalchemy import text
 
 logger = setup_logger(__name__, "./logs/google_trends_ingestion.log")
 load_dotenv()
@@ -71,6 +72,73 @@ def parse_date_range(date_range):
         return None, None
 
 
+def process_single_file(minio_client, file_path):
+    """
+    Process a single Google Trends file and return list of records
+    """
+    try:
+        response = minio_client.get_object(MINIO_BUCKET, file_path)
+        content = response.read().decode("utf-8")
+        response.close()
+
+        lines = content.strip().split("\n")
+        trends_data = []
+        keyword, begin_date, end_date = None, None, None
+
+        for line in lines:
+            if (
+                "(" in line
+                and ")" in line
+                and " - " in line
+                and line.startswith("Region")
+            ):
+                keyword, begin_date, end_date = extract_keyword_and_dates(line)
+                if not keyword:
+                    logger.warning("No keyword found in: %s", file_path)
+                    break
+
+            line = line.strip()
+            if not line:
+                continue
+
+            parts = line.rsplit(",", 1)
+            if len(parts) >= 2:
+                region = parts[0].strip()
+                score_str = parts[1].strip()
+
+                try:
+                    if score_str == "<1":
+                        score = 1
+                    else:
+                        score = int(score_str)
+
+                    if keyword:
+                        trends_data.append(
+                            {
+                                "keyword": keyword,
+                                "region": region,
+                                "interest_score": score,
+                                "begin_date": begin_date,
+                                "end_date": end_date,
+                                "filename": file_path,
+                                "retrieved_at": datetime.now(timezone.utc).strftime(
+                                    "%Y-%m-%d %H:%M:%S"
+                                ),
+                            }
+                        )
+                except ValueError:
+                    continue
+
+        if keyword:
+            logger.info("Processed '%s' (%s to %s)", keyword, begin_date, end_date)
+
+        return trends_data
+
+    except Exception as e:
+        logger.error("Error processing %s: %s", file_path, e)
+        raise
+
+
 def process_trends_files():
     """
     Process all Google Trends files in a directory and return combined DataFrame
@@ -85,61 +153,8 @@ def process_trends_files():
     trends_data = []
     for file in trends_blobs:
         file_path = file.object_name
-        try:
-            response = minio_client.get_object(MINIO_BUCKET, file_path)
-            content = response.read().decode("utf-8")
-            response.close()
-
-            lines = content.strip().split("\n")
-            for line in lines:
-                if (
-                    "(" in line
-                    and ")" in line
-                    and " - " in line
-                    and line.startswith("Region")
-                ):
-                    keyword, begin_date, end_date = extract_keyword_and_dates(line)
-                    if not keyword:
-                        logger.warning("No keyword found in: %s", file_path)
-                        break
-
-                line = line.strip()
-                if not line:
-                    continue
-
-                parts = line.rsplit(",", 1)
-                if len(parts) >= 2:
-                    region = parts[0].strip()
-                    score_str = parts[1].strip()
-
-                    try:
-                        if score_str == "<1":
-                            score = 1
-                        else:
-                            score = int(score_str)
-
-                        if keyword:
-                            trends_data.append(
-                                {
-                                    "keyword": keyword,
-                                    "region": region,
-                                    "interest_score": score,
-                                    "begin_date": begin_date,
-                                    "end_date": end_date,
-                                    "filename": file_path,
-                                    "retrieved_at": datetime.now(timezone.utc).strftime(
-                                        "%Y-%m-%d %H:%M:%S"
-                                    ),
-                                }
-                            )
-                    except ValueError:
-                        continue
-
-            logger.info("Processed '%s' (%s to %s)", keyword, begin_date, end_date)
-
-        except Exception as e:
-            logger.error("Error processing %s: %s", file_path, e)
-            continue
+        file_trends_data = process_single_file(minio_client, file_path)
+        trends_data.extend(file_trends_data)
 
     if not trends_data:
         logger.error("No valid data found in any files")
@@ -153,16 +168,36 @@ def process_trends_files():
 
     if original_length != len(all_trends_data):
         logger.info(
-            "Removed %d duplicate records", original_length - len(all_trends_data)
+            "Removed %i duplicate records", original_length - len(all_trends_data)
         )
 
-    logger.info(
-        "Successfully processed %d total records for %d unique keywords",
-        len(all_trends_data),
-        all_trends_data["keyword"].nunique(),
-    )
+    logger.info("Successfully processed %i total records", len(all_trends_data))
 
     return all_trends_data
+
+
+def save_google_trends(trends_data):
+    """Save Google Trends data to DuckLake"""
+    if trends_data.empty:
+        logger.warning("No trends data to save")
+        return False
+
+    engine = get_sqlalchemy_engine()
+
+    try:
+        trends_data = trends_data.drop_duplicates(
+            subset=["keyword", "region", "begin_date", "end_date"], keep="first"
+        )
+
+        trends_data.to_sql(
+            "google_trends", engine, if_exists="append", index=False, method="multi"
+        )
+        logger.info("Saved %d records", len(trends_data))
+        return True
+
+    except Exception as e:
+        logger.error("Error saving Google Trends data: %s", e)
+        raise
 
 
 def main():
@@ -172,6 +207,7 @@ def main():
 
     logger.info("Processing files from Minio")
     all_trends_data = process_trends_files()
+    save_google_trends(all_trends_data)
 
 
 if __name__ == "__main__":
