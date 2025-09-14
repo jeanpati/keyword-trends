@@ -205,7 +205,7 @@ def save_search_results(search_results_data):
             "search_results", engine, if_exists="append", index=False, method="multi"
         )
         logger.info(
-            "Processed %d search results (database will skip any duplicates)",
+            "Processed %d search results",
             len(search_results),
         )
 
@@ -289,7 +289,7 @@ def save_video_statistics(video_stats_data):
             "video_statistics", engine, if_exists="append", index=False, method="multi"
         )
         logger.info(
-            "Processed %d video statistics (database will skip any duplicates)",
+            "Processed %d video statistics",
             len(video_stats),
         )
 
