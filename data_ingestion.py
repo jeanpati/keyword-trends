@@ -187,9 +187,7 @@ def search_youtube_videos(keyword):
 
 
 def save_search_results(search_results_data):
-    """
-    Save search results to DuckLake
-    """
+    """Save search results to DuckLake"""
     if not search_results_data:
         logger.warning("No search results to save")
         return
@@ -202,39 +200,14 @@ def save_search_results(search_results_data):
             subset=["video_id"], keep="first"
         )
 
-        with engine.connect() as conn:
-            try:
-                existing_video_ids = conn.execute(
-                    text(
-                        "SELECT DISTINCT video_id FROM search_results WHERE video_id IS NOT NULL"
-                    )
-                ).fetchall()
-                existing_video_ids = {row[0] for row in existing_video_ids}
-            except Exception as e:
-                logger.warning("Error checking existing video_ids: %s", e)
-                raise
-
-        new_results = search_results[
-            ~search_results["video_id"].isin(existing_video_ids)
-        ]
-
-        if len(new_results) > 0:
-            new_results.to_sql(
-                "search_results",
-                engine,
-                if_exists="append",
-                index=False,
-                method="multi",
-            )
-            logger.info("Saved %s new search results to database", len(new_results))
-        else:
-            logger.info("No new search results to save")
-
-        if len(new_results) < len(search_results):
-            logger.info(
-                "Skipped %s duplicate video_ids",
-                len(search_results) - len(new_results),
-            )
+        # Let database handle duplicates via unique constraint
+        search_results.to_sql(
+            "search_results", engine, if_exists="append", index=False, method="multi"
+        )
+        logger.info(
+            "Processed %d search results (database will skip any duplicates)",
+            len(search_results),
+        )
 
     except Exception as e:
         logger.error("Error saving search results: %s", e)
@@ -298,9 +271,7 @@ def get_video_statistics(video_ids):
 
 
 def save_video_statistics(video_stats_data):
-    """
-    Save video statistics to DuckLake
-    """
+    """Save video statistics to DuckLake"""
     if not video_stats_data:
         logger.warning("No video statistics to save")
         return
@@ -309,39 +280,18 @@ def save_video_statistics(video_stats_data):
 
     try:
         video_stats = pd.DataFrame(video_stats_data)
-        video_stats = video_stats.drop_duplicates(subset=["video_id"], keep="first")
+        video_stats = video_stats.drop_duplicates(
+            subset=["video_id", "retrieved_at"], keep="first"
+        )
 
-        with engine.connect() as conn:
-            try:
-                existing_video_ids = conn.execute(
-                    text(
-                        "SELECT DISTINCT video_id FROM video_statistics WHERE video_id IS NOT NULL"
-                    )
-                ).fetchall()
-                existing_video_ids = {row[0] for row in existing_video_ids}
-            except Exception as e:
-                logger.warning("Error checking existing video_ids: %s", e)
-                raise
-
-        new_stats = video_stats[~video_stats["video_id"].isin(existing_video_ids)]
-
-        if len(new_stats) > 0:
-            new_stats.to_sql(
-                "video_statistics",
-                engine,
-                if_exists="append",
-                index=False,
-                method="multi",
-            )
-            logger.info("Saved %s new video statistics to database", len(new_stats))
-        else:
-            logger.info("No new video statistics to save")
-
-        if len(new_stats) < len(video_stats):
-            logger.info(
-                "Skipped %s duplicate video_ids",
-                len(video_stats) - len(new_stats),
-            )
+        # Let database handle duplicates via unique constraint
+        video_stats.to_sql(
+            "video_statistics", engine, if_exists="append", index=False, method="multi"
+        )
+        logger.info(
+            "Processed %d video statistics (database will skip any duplicates)",
+            len(video_stats),
+        )
 
     except Exception as e:
         logger.error("Error saving video statistics: %s", e)
