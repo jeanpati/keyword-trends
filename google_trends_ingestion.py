@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime
 import pandas as pd
 from utils.logger import setup_logger
@@ -15,6 +16,69 @@ MINIO_BUCKET = os.getenv("MINIO_BUCKET")
 MINIO_FILE_PATH = os.getenv("MINIO_FILE_PATH")
 
 
+def extract_keyword_and_dates(header_line):
+    """
+    Parse the header to get keyword, begin_date, and end_date
+    """
+    try:
+        if ":" not in header_line or not header_line.startswith("Region "):
+            return None, None, None
+
+        keyword_part = header_line[7:].strip()  # removes "Region "
+        if ":" in keyword_part:
+            keyword = keyword_part.split(":")[0].strip()
+        else:
+            # everything before the opening parenthesis
+            keyword = keyword_part.split("(")[0].strip()
+
+        date_match = re.search(r"\(([^)]+)\)", header_line)
+        if not date_match:
+            return keyword, None, None
+
+        date_range = date_match.group(1)
+        begin_date, end_date = parse_date_range(date_range)
+
+        return keyword, begin_date, end_date
+
+    except Exception as e:
+        logger.info("Error parsing header: %s", e)
+        return None, None, None
+
+
+def parse_date_range(date_range):
+    """Parse date range string into begin_date and end_date"""
+    try:
+        if " - " not in date_range:
+            return None, None
+
+        start_str, end_str = date_range.split(" - ")
+
+        date_format = ["%m/%d/%y"]
+
+        begin_date = None
+        end_date = None
+
+        start_str = start_str.strip()
+
+        begin_date = datetime.strptime(start_str, date_format).date()
+
+        if not begin_date:
+            print("Could not parse start date: %s", start_str)
+
+        end_str = end_str.strip()
+
+        end_date = datetime.strptime(end_str, date_format).date()
+
+        if not end_date:
+            print("Could not parse end date: %s", end_str)
+
+        return begin_date, end_date
+
+    except Exception as e:
+        print("Error parsing date range '%s': %s", date_range, e)
+        return None, None
+
+
 def process_trends_files():
     """
     Process all Google Trends files in a directory and return combined DataFrame
@@ -27,17 +91,18 @@ def process_trends_files():
     )
 
     trends_data = []
-    for filename in trends_blobs:
-        file_path = os.path.join(trends_folder, filename)
+    for file in trends_blobs:
+        file_path = file.object_name
         print(file_path)
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
+            response = minio_client.get_object(MINIO_BUCKET, file_path)
+            content = response.read().decode("utf-8")
+            response.close()
 
             lines = content.strip().split("\n")
             print(lines)
         except Exception as e:
-            print("Error processing %s: %s", filename, e)
+            print("Error processing %s: %s", file, e)
             raise
 
 
