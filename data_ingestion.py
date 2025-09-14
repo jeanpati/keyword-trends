@@ -200,7 +200,6 @@ def save_search_results(search_results_data):
             subset=["video_id"], keep="first"
         )
 
-        # Let database handle duplicates via unique constraint
         search_results.to_sql(
             "search_results", engine, if_exists="append", index=False, method="multi"
         )
@@ -284,7 +283,6 @@ def save_video_statistics(video_stats_data):
             subset=["video_id", "retrieved_at"], keep="first"
         )
 
-        # Let database handle duplicates via unique constraint
         video_stats.to_sql(
             "video_statistics", engine, if_exists="append", index=False, method="multi"
         )

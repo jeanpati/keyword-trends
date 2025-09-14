@@ -5,7 +5,6 @@ import pandas as pd
 from utils.logger import setup_logger
 from dotenv import load_dotenv
 from data_ingestion import get_sqlalchemy_engine, connect_to_minio
-from sqlalchemy import text
 
 logger = setup_logger(__name__, "./logs/google_trends_ingestion.log")
 load_dotenv()
@@ -25,7 +24,7 @@ def extract_keyword_and_dates(header_line):
         if ":" not in header_line or not header_line.startswith("Region"):
             return None, None, None
 
-        keyword_part = header_line[7:].strip()  # removes "Region "
+        keyword_part = header_line[7:].strip()  # removes "Region,"
         keyword = keyword_part.split(":")[0].strip().lower()
 
         date_match = re.search(r"\(([^)]+)\)", header_line)
