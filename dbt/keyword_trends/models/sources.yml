@@ -1,0 +1,21 @@
+version: 2
+sources:
+  - name: bronze
+    database: trends_lake
+    schema: main
+    description: "Bronze layer - raw data from lakehouse"
+    tables:
+      - name: keywords
+        description: "Raw keyword data"
+  - name: silver
+    description: "Cleaned and transformed data"
+    tables:
+      - name: faction_distribution
+      - name: households
+      - name: language_building_blocks
+      - name: language_roots
+      - name: moons
+      - name: people
+      - name: planets
+      - name: region_biome
+      - name: regions
