@@ -1,0 +1,58 @@
+{{ config(
+    materialized='table',
+    pre_hook=[
+        "SET s3_endpoint='localhost:9000'",
+        "SET s3_use_ssl=false", 
+        "SET s3_access_key_id='admin'",
+        "SET s3_secret_access_key='password'",
+        "SET s3_url_style='path'"
+    ]
+) }}
+
+
+SELECT 
+    region_id,
+    geography_id,
+    geographic_area_name,
+    survey_year,
+    total_population,
+    total_population_male_percentage,
+    total_population_female_percentage,
+    sex_ratio_males_per_100_females,
+    population_under_5_percentage,
+    population_5_to_9_percentage,
+    population_10_to_14_percentage,
+    population_15_to_19_percentage,
+    population_20_to_24_percentage,
+    population_25_to_34_percentage,
+    population_35_to_44_percentage,
+    population_45_to_54_percentage,
+    population_55_to_59_percentage,
+    population_60_to_64_percentage,
+    population_65_to_74_percentage,
+    population_75_to_84_percentage,
+    population_85_and_ove_percentage,
+    median_age_years,
+    population_under_18_percentage,
+    population_16_and_over_percentage,
+    population_18_and_over_percentage,
+    population_21_and_over_percentage,
+    population_62_and_over_percentage,
+    population_65_and_over_percentage,
+    population_18_and_over_male_percentage,
+    population_18_and_over_female_percentage,
+    sex_ratio_18_and_over_males_per_100_females,
+    population_65_and_over_male_percentage,
+    population_65_and_over_female_percentage,
+    sex_ratio_65_and_over_males_per_100_females,
+    white_alone_or_combination_percentage,
+    black_alone_or_combination_percentage,
+    american_indian_alaska_native_alone_or_combination_percentage,
+    asian_alone_or_combination_percentage,
+    native_hawaiian_pacific_islander_alone_or_combination_percentage,
+    some_other_race_alone_or_combination_percentage,
+    total_housing_units,
+    citizen_18_and_over_population,
+    citizen_18_and_over_population_male_percentage,
+    citizen_18_and_over_population_female_percentage
+FROM {{ source('silver', 'silver_census') }}

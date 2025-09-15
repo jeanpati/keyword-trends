@@ -17,6 +17,8 @@ sources:
         description: "Raw google trends data"
 
   - name: silver
+    database: lake
+    schema: keywords_silver
     description: "Cleaned and transformed data"
     tables:
       - name: silver_census
