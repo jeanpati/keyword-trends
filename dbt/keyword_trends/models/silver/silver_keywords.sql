@@ -5,8 +5,7 @@
         "SET s3_use_ssl=false", 
         "SET s3_access_key_id='admin'",
         "SET s3_secret_access_key='password'",
-        "SET s3_url_style='path'",
-        "ATTACH 'ducklake:/Users/jean/workspace/data-engineering/capstone-project-keyword-trends/data/ducklake-db/catalog.duckdb' AS trends_lake (DATA_PATH 's3://bronze/parquet/')",
+        "SET s3_url_style='path'"
     ]
 ) }}
 
@@ -18,6 +17,6 @@ WITH base AS (
     FROM {{ source('bronze', 'keywords') }}
 )
 SELECT
-    ROW_NUMBER() OVER () AS keyword_id,   -- surrogate key
+    ROW_NUMBER() OVER () AS keyword_id,
     *
 FROM base

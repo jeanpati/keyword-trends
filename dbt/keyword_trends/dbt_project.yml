@@ -7,6 +7,14 @@ version: "1.0.0"
 # This setting configures which "profile" dbt uses for this project.
 profile: "duck_dev"
 
+on-run-start:
+  - "SET s3_endpoint='localhost:9000'"
+  - "SET s3_use_ssl=false"
+  - "SET s3_access_key_id='admin'"
+  - "SET s3_secret_access_key='password'"
+  - "SET s3_url_style='path'"
+  - "ATTACH 'ducklake:/Users/jean/workspace/data-engineering/capstone-project-keyword-trends/data/ducklake-db/catalog.duckdb' AS trends_lake (DATA_PATH 's3://bronze/parquet/')"
+
 # These configurations specify where dbt should look for different types of files.
 # The `model-paths` config, for example, states that models in this project can be
 # found in the "models/" directory. You probably won't need to change these!
@@ -32,6 +40,7 @@ models:
     silver:
       +schema: silver
       +materialized: table
+
     gold:
       +schema: gold
       +materialized: table
