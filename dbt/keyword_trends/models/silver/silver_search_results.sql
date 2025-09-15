@@ -11,17 +11,18 @@
 
 WITH base AS (
     SELECT 
-        video_id,
-        search_keyword, 
-        title,
-        description,
-        channel_id,
-        channel_title,
-        publish_time,
-        searched_at
-    FROM {{ source('bronze', 'search_results') }}
+        s.video_id,
+        k.keyword_id, 
+        s.title,
+        s.description,
+        s.channel_id,
+        s.channel_title,
+        s.publish_time,
+        s.searched_at
+    FROM {{ source('bronze', 'search_results') }} s
+    JOIN {{ ref('silver_keywords') }} k on k.keyword = s.search_keyword
 )
 SELECT
-    ROW_NUMBER() OVER () AS result_id,
+    ROW_NUMBER() OVER () AS search_result_id,
     *
 FROM base
