@@ -105,7 +105,7 @@ def save_search_results(search_results_data):
         )
 
         search_results.to_sql(
-            "search_results", engine, if_exists="append", index=False, method="multi"
+            "search_results", engine, if_exists="append", index=False, method=None
         )
         logger.info(
             "Processed %d search results",
@@ -126,14 +126,12 @@ def main():
         return
 
     all_search_results = []
-    for i, keyword in enumerate(keywords, 1):
-        logger.info("Processing keyword %d/%d: %s", i, len(keywords), keyword)
+    for keyword in keywords:
+        logger.info("Processing keyword: %s", keyword)
         search_results = search_youtube_videos(keyword)
         all_search_results.extend(search_results)
 
-        # Rate limiting - 1 second between requests
-        if i < len(keywords):  # Don't sleep after the last keyword
-            time.sleep(1)
+        time.sleep(1)
 
     save_search_results(all_search_results)
     logger.info(
