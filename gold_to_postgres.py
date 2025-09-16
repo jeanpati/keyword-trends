@@ -37,7 +37,7 @@ def main():
             ).fetchdf()
 
             export_table_data.to_sql(
-                table, conn, if_exists="append", index=False, method="multi"
+                table, conn, if_exists="replace", index=False, method="multi"
             )
 
             logger.info("Uploaded %s rows to Postgres", len(export_table_data))
