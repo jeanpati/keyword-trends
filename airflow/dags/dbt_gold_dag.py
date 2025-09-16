@@ -45,4 +45,17 @@ with DAG(
         dag=dag,
     )
 
-    dbt_debug >> dbt_deps >> dbt_run_gold >> dbt_test_staging >> dbt_docs_generate
+    gold_to_postgres = BashOperator(
+        task_id="gold_to_postgres",
+        bash_command="python /opt/airflow/project_root/google_trends_ingestion.py",
+        dag=dag,
+    )
+
+    (
+        dbt_debug
+        >> dbt_deps
+        >> dbt_run_gold
+        >> dbt_test_staging
+        >> dbt_docs_generate
+        >> gold_to_postgres
+    )

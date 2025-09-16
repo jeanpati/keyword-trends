@@ -29,14 +29,19 @@ engine = create_engine(
 )
 
 
-with duckdb.connect(DUCKDB_PATH) as duck, engine.begin() as conn:
-    for table in export_tables:
-        export_table_data = duck.execute(
-            f"SELECT * FROM {DUCKDB_GOLD_SCHEMA}.{table}"
-        ).fetchdf()
+def main():
+    with duckdb.connect(DUCKDB_PATH) as duck, engine.begin() as conn:
+        for table in export_tables:
+            export_table_data = duck.execute(
+                f"SELECT * FROM {DUCKDB_GOLD_SCHEMA}.{table}"
+            ).fetchdf()
 
-        export_table_data.to_sql(
-            table, conn, if_exists="append", index=False, method="multi"
-        )
+            export_table_data.to_sql(
+                table, conn, if_exists="append", index=False, method="multi"
+            )
 
-        logger.info("Uploaded %s rows to Postgres", len(export_table_data))
+            logger.info("Uploaded %s rows to Postgres", len(export_table_data))
+
+
+if __name__ == "__main__":
+    main()
