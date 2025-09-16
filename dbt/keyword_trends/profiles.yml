@@ -1,0 +1,8 @@
+duck_dev:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../../data/ducklake-db/lake.duckdb
+      schema: keywords
+      threads: 1

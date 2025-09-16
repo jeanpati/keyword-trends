@@ -1,0 +1,28 @@
+version: 2
+sources:
+  - name: bronze
+    database: trends_lake
+    schema: main
+    description: "Bronze layer - raw data from lakehouse"
+    tables:
+      - name: keywords
+        description: "Raw keyword data"
+      - name: census
+        description: "Raw census data"
+      - name: search_results
+        description: "Raw search results data"
+      - name: video_statistics
+        description: "Raw video statistics data"
+      - name: google_trends
+        description: "Raw google trends data"
+
+  - name: silver
+    database: lake
+    schema: keywords_silver
+    description: "Cleaned and transformed data"
+    tables:
+      - name: silver_census
+      - name: silver_google_trends
+      - name: silver_keywords
+      - name: silver_search_results
+      - name: silver_video_statistics

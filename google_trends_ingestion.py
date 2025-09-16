@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 import pandas as pd
 from utils.logger import setup_logger
 from dotenv import load_dotenv
-from data_ingestion import get_sqlalchemy_engine, connect_to_minio
+from csv_to_parquet import connect_to_minio
+from utils.sqlalchemy_engine import get_sqlalchemy_engine
 
 logger = setup_logger(__name__, "./logs/google_trends_ingestion.log")
 load_dotenv()
@@ -207,6 +208,7 @@ def main():
     logger.info("Processing files from Minio")
     all_trends_data = process_trends_files()
     save_google_trends(all_trends_data)
+    logger.info("Saved to database")
 
 
 if __name__ == "__main__":
