@@ -50,3 +50,6 @@ logs/
 
 #startup script (dead code)
 project_startup.py
+
+#Docker
+docker-compose.yml

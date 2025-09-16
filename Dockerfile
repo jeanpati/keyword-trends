@@ -6,4 +6,5 @@ RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
 USER airflow
 
-RUN pip install --no-cache-dir pandas requests duckdb dbt-core dbt-duckdb
+COPY requirements.txt /
+RUN pip install --no-cache-dir -r /requirements.txt
