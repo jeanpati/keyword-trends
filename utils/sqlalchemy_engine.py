@@ -7,14 +7,15 @@ MINIO_URL = os.getenv("MINIO_URL")
 MINIO_BUCKET = os.getenv("MINIO_BUCKET")
 CATALOG_PATH = os.getenv("CATALOG_PATH")
 MINIO_PARQUET_PATH = os.getenv("MINIO_PARQUET_PATH")
+DUCKDB_PATH = os.getenv("DUCKDB_PATH", "/opt/airflow/data/ducklake-db/lake.duckdb")
 
 
 def get_sqlalchemy_engine():
     """
     Create SQLAlchemy engine for DuckDB with DuckLake
     """
-    db_path = "data/ducklake-db/lake.duckdb"
-    engine = create_engine(f"duckdb:///{db_path}")
+
+    engine = create_engine(f"duckdb:///{DUCKDB_PATH}")
 
     with engine.connect() as conn:
         conn.execute(text("LOAD 'ducklake'"))
@@ -33,6 +34,5 @@ def get_sqlalchemy_engine():
                 )
             )
         conn.execute(text("USE trends_lake"))
-        conn.commit()
 
     return engine

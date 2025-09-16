@@ -16,3 +16,4 @@ with DAG(
         task_id="csv_to_parquet",
         bash_command="python /opt/airflow/project_root/csv_to_parquet.py",
     )
+    csv_to_parquet_task
