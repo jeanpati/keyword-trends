@@ -9,3 +9,4 @@ dbt-duckdb
 google-api-python-client
 sqlalchemy
 duckdb-engine
+psycopg2-binary
