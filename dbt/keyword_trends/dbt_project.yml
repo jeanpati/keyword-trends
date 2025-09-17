@@ -13,7 +13,7 @@ on-run-start:
   - "SET s3_access_key_id='admin'"
   - "SET s3_secret_access_key='password'"
   - "SET s3_url_style='path'"
-  - "ATTACH 'ducklake:{{ env_var('CATALOG_PATH') }}' AS trends_lake (DATA_PATH 's3://bronze/parquet/')"
+  - "ATTACH 'ducklake:{{ env_var('CATALOG_PATH', '/Users/jean/workspace/data-engineering/capstone-project-keyword-trends/data/ducklake-db/catalog.duckdb') }}' AS trends_lake (DATA_PATH 's3://bronze/parquet/')"
 
 # These configurations specify where dbt should look for different types of files.
 # The `model-paths` config, for example, states that models in this project can be

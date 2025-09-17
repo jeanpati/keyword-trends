@@ -84,7 +84,7 @@ keyword_growth_metrics AS (
         SUM(latest_views - initial_views) as total_view_growth,
         SUM(latest_likes - initial_likes) as total_like_growth,
         SUM(latest_comments - initial_comments) as total_comment_growth,
-        AVG(DATE_DIFF('day', first_retrieved_at, latest_retrieved_at)) as avg_days_tracked
+    AVG(DATE_DIFF('day', CAST(first_retrieved_at AS DATE), CAST(latest_retrieved_at AS DATE))) as avg_days_tracked
     FROM first_and_latest_stats
     GROUP BY search_keyword
 )

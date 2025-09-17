@@ -42,7 +42,7 @@ dominant_videos AS (
         sf.*,
         kst.total_search_dates,
         ROUND((sf.search_appearances * 100.0 / kst.total_search_dates), 1) as dominance_percentage,
-        DATE_DIFF('day', sf.first_appeared, sf.last_appeared) as days_stayed_relevant
+    DATE_DIFF('day', CAST(sf.first_appeared AS DATE), CAST(sf.last_appeared AS DATE)) as days_stayed_relevant
     FROM search_frequency sf
     JOIN keyword_search_totals kst ON kst.keyword = sf.keyword
 )
