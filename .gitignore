@@ -53,3 +53,6 @@ project_startup.py
 
 #Docker
 docker-compose.yml
+
+#metabase
+metabase-data/
