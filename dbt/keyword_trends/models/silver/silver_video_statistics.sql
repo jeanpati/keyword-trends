@@ -1,7 +1,7 @@
 {{ config(
     materialized='table',
     pre_hook=[
-        "SET s3_endpoint='localhost:9000'",
+        "SET s3_endpoint='{{ env_var('MINIO_URL', 'localhost:9000') }}'",
         "SET s3_use_ssl=false", 
         "SET s3_access_key_id='admin'",
         "SET s3_secret_access_key='password'",
@@ -21,5 +21,5 @@ SELECT
         COALESCE(CAST(NULLIF(REGEXP_EXTRACT(duration, '(\d+)M', 1), '') AS INT), 0) * 60 +
         COALESCE(CAST(NULLIF(REGEXP_EXTRACT(duration, '(\d+)S', 1), '') AS INT), 0)
     ) AS duration_seconds,
-    retrieved_at
+    CAST(retrieved_at AS TIMESTAMP) AS retrieved_at
 FROM {{ source('bronze', 'video_statistics') }}

@@ -5,7 +5,7 @@ import googleapiclient.discovery
 from sqlalchemy import text
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from utils.sqlalchemy_engine import get_sqlalchemy_engine
+from utils.sqlalchemy_engine import get_ducklake_engine
 from utils.logger import setup_logger
 
 load_dotenv()
@@ -18,7 +18,7 @@ def get_keywords(limit):
     """
     Retrieve all keywords from the keywords table
     """
-    engine = get_sqlalchemy_engine()
+    engine = get_ducklake_engine()
 
     try:
         with engine.connect() as conn:
@@ -96,7 +96,7 @@ def save_search_results(search_results_data):
         logger.warning("No search results to save")
         return
 
-    engine = get_sqlalchemy_engine()
+    engine = get_ducklake_engine()
 
     try:
         search_results = pd.DataFrame(search_results_data)
@@ -105,7 +105,11 @@ def save_search_results(search_results_data):
         )
 
         search_results.to_sql(
-            "search_results", engine, if_exists="append", index=False, method=None
+            "search_results",
+            engine,
+            if_exists="append",
+            index=False,
+            method=None,
         )
         logger.info(
             "Processed %d search results",
@@ -124,7 +128,6 @@ def main():
     if not keywords:
         logger.error("No keywords found, exiting")
         return
-
     all_search_results = []
     for keyword in keywords:
         logger.info("Processing keyword: %s", keyword)

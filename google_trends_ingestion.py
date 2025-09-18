@@ -5,16 +5,16 @@ import pandas as pd
 from utils.logger import setup_logger
 from dotenv import load_dotenv
 from csv_to_parquet import connect_to_minio
-from utils.sqlalchemy_engine import get_sqlalchemy_engine
+from utils.sqlalchemy_engine import get_ducklake_engine
 
-logger = setup_logger(__name__, "./logs/google_trends_ingestion.log")
 load_dotenv()
+logger = setup_logger(__name__, "./logs/google_trends_ingestion.log")
 
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 MINIO_URL = os.getenv("MINIO_URL")
 MINIO_BUCKET = os.getenv("MINIO_BUCKET")
-MINIO_FILE_PATH = os.getenv("MINIO_FILE_PATH")
+MINIO_PARQUET_PATH = os.getenv("MINIO_PARQUET_PATH")
 
 
 def extract_keyword_and_dates(header_line):
@@ -182,7 +182,7 @@ def save_google_trends(trends_data):
         logger.warning("No trends data to save")
         return False
 
-    engine = get_sqlalchemy_engine()
+    engine = get_ducklake_engine(use_trends_lake=True)
 
     try:
         trends_data = trends_data.drop_duplicates(
@@ -190,7 +190,11 @@ def save_google_trends(trends_data):
         )
 
         trends_data.to_sql(
-            "google_trends", engine, if_exists="append", index=False, method="multi"
+            "google_trends",
+            engine,
+            if_exists="replace",
+            index=False,
+            method="multi",
         )
         logger.info("Saved %d records", len(trends_data))
         return True

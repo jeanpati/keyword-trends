@@ -1,7 +1,7 @@
 {{ config(
     materialized='table',
     pre_hook=[
-        "SET s3_endpoint='localhost:9000'",
+        "SET s3_endpoint='{{ env_var('MINIO_URL', 'localhost:9000') }}'",
         "SET s3_use_ssl=false", 
         "SET s3_access_key_id='admin'",
         "SET s3_secret_access_key='password'",
@@ -17,8 +17,8 @@ WITH base AS (
         s.description,
         s.channel_id,
         s.channel_title,
-        s.publish_time,
-        s.searched_at
+        CAST(s.publish_time AS TIMESTAMP) AS publish_time,
+        CAST(s.searched_at AS TIMESTAMP) AS searched_at
     FROM {{ source('bronze', 'search_results') }} s
     JOIN {{ ref('silver_keywords') }} k on k.keyword = s.search_keyword
 )

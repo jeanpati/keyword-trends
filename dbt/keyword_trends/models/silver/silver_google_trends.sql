@@ -1,7 +1,7 @@
 {{ config(
     materialized='table',
     pre_hook=[
-        "SET s3_endpoint='localhost:9000'",
+        "SET s3_endpoint='{{ env_var('MINIO_URL', 'localhost:9000') }}'",
         "SET s3_use_ssl=false", 
         "SET s3_access_key_id='admin'",
         "SET s3_secret_access_key='password'",
@@ -17,7 +17,7 @@ WITH base AS (
         t.begin_date,
         t.end_date,
         t.filename,
-        t.retrieved_at
+        CAST(t.retrieved_at AS TIMESTAMP) AS retrieved_at
     FROM {{ source('bronze', 'google_trends') }} t
     JOIN {{ ref('silver_census') }} c on c.geographic_area_name = t.region
     JOIN {{ ref('silver_keywords') }} k on k.keyword = t.keyword
