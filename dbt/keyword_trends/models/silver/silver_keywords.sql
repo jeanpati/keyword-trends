@@ -13,7 +13,7 @@ WITH base AS (
     SELECT 
         keyword,
         filename, 
-        ingested_at
+        CAST(ingested_at AS TIMESTAMP) AS ingested_at
     FROM {{ source('bronze', 'keywords') }}
 )
 SELECT

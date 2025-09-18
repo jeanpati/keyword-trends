@@ -17,7 +17,7 @@ WITH base AS (
         t.begin_date,
         t.end_date,
         t.filename,
-        t.retrieved_at
+        CAST(t.retrieved_at AS TIMESTAMP) AS retrieved_at
     FROM {{ source('bronze', 'google_trends') }} t
     JOIN {{ ref('silver_census') }} c on c.geographic_area_name = t.region
     JOIN {{ ref('silver_keywords') }} k on k.keyword = t.keyword

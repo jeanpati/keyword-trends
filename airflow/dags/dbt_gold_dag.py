@@ -47,7 +47,7 @@ with DAG(
 
     gold_to_postgres = BashOperator(
         task_id="gold_to_postgres",
-        bash_command="python /opt/airflow/project_root/google_trends_ingestion.py",
+        bash_command="python /opt/airflow/project_root/gold_to_postgres.py",
         dag=dag,
     )
 
