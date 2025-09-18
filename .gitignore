@@ -1,0 +1,58 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.class
+
+# Virtual environment
+venv/
+.venv/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Pytest cache
+.pytest_cache/
+
+# VS Code settings
+.vscode/
+
+# environment
+.env
+
+# cube.js
+.cubestore
+
+# dbt
+
+
+# duckdb
+duck_dev.db
+*.duckdb
+*.duckdb.wal
+data/
+
+#logs
+logs/
+
+#startup script (dead code)
+project_startup.py
+
+#Docker
+docker-compose.yml
+
+#metabase
+metabase-data/
